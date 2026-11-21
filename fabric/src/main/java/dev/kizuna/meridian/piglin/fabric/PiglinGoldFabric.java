@@ -32,7 +32,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /** 金囊进度的活动提交、消耗和金粒掉落接线。 */
-final class PiglinGoldFabric {
+public final class PiglinGoldFabric {
     private static final String CALLER = "meridian_piglin:gold";
     private static final String ABDOMEN_PART_ID = "abdomen";
     private static final int GOLD_NUGGET_STACK_SIZE = 64;
@@ -47,8 +47,22 @@ final class PiglinGoldFabric {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> SETTLED_DEATHS.clear());
     }
 
-    static long gold(LivingEntity entity) {
+    public static long gold(LivingEntity entity) {
         return VanillaDamageFabric.inspectBody(entity).map(PiglinGold::read).orElse(0L);
+    }
+
+    static long capacity(LivingEntity entity) {
+        return VanillaDamageFabric.inspectBody(entity)
+                .map(body -> PiglinGold.capacity(HumanoidTier.of(body)))
+                .orElse(0L);
+    }
+
+    public static boolean addGold(LivingEntity entity, long currentGold) {
+        long updatedGold = currentGold + PiglinGold.INGOT_VALUE;
+        if (updatedGold > capacity(entity)) {
+            return false;
+        }
+        return setGold(entity, updatedGold).isPresent();
     }
 
     static Optional<BodySnapshot> spend(LivingEntity entity, long amount) {
@@ -67,7 +81,7 @@ final class PiglinGoldFabric {
         return submitGold(entity, current.get(), replacement);
     }
 
-    static Optional<BodySnapshot> setGold(LivingEntity entity, long amount) {
+    public static Optional<BodySnapshot> setGold(LivingEntity entity, long amount) {
         Optional<BodySnapshot> current = VanillaDamageFabric.inspectBody(entity);
         if (current.isEmpty()) {
             return Optional.empty();

@@ -8,6 +8,7 @@
   "license": "PolyForm-Noncommercial-1.0.0",
   "environment": "*",
   "entrypoints": {"main": ["dev.kizuna.meridian.piglin.fabric.PiglinFabric"]},
+  "mixins": ["meridian_piglin.mixins.json"],
   "depends": {
     "fabric-api": "*",
     "meridian_humanoid_host": "*",

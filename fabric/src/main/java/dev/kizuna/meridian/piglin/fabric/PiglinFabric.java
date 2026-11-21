@@ -57,6 +57,7 @@ public final class PiglinFabric implements ModInitializer {
         HumanDamage.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         VanillaDamageFabric.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         PiglinGoldFabric.register();
+        PiglinBehaviorFabric.register();
     }
 
     public static boolean accepts(LivingEntity entity) {
