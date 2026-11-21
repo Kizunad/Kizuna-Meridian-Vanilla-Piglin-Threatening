@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "package": "dev.kizuna.meridian.piglin.fabric.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [],
+  "injectors": {"defaultRequire": 0}
+}

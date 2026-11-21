@@ -1,0 +1,82 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    flatDir { dirs kizunaWorkspace.artifact('pathfinding', 'core', false).parentFile }
+}
+
+dependencies {
+    minecraft libs.minecraft
+    implementation libs.fabric.loader
+    implementation libs.fabric.api
+    implementation libs.tomlj
+    implementation libs.protobuf.java
+    implementation('dev.kizuna.meridian.human:server') { transitive = false }
+    implementation('dev.kizuna.meridian.humanoid:fabric') { transitive = false }
+    implementation('dev.kizuna.meridian.humanoid:server') { transitive = false }
+    implementation('dev.kizuna.meridian.vanilla:fabric') { transitive = false }
+    compileOnly('dev.kizuna.meridian:fabric') { transitive = false }
+    implementation project(':server')
+    include project(':server')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+
+apply from: new File(kizunaWorkspace.directory('framework'), 'scripts/full-assembly.gradle')
+
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+    clienttest {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath + sourceSets.main.output
+    }
+}
+
+dependencies {
+    gametestCompileOnly('dev.kizuna.meridian.technique:fabric') { transitive = false }
+    gametestCompileOnly('dev.kizuna.meridian.human:shared') { transitive = false }
+    gametestCompileOnly('dev.kizuna.meridian.technique:server') { transitive = false }
+    gametestCompileOnly('dev.kizuna.meridian.vanilla:server') { transitive = false }
+    gametestRuntimeOnly project(':server')
+}
+
+loom {
+    mods {
+        meridian_piglin { sourceSet sourceSets.main }
+        meridian_piglin_test { sourceSet sourceSets.gametest }
+        meridian_piglin_clienttest { sourceSet sourceSets.clienttest }
+    }
+    runs {
+        gametest {
+            server()
+            name '猪灵身体 GameTest'
+            source sourceSets.gametest
+            runDir providers.gradleProperty('gametestRunDir').getOrElse('build/gametest')
+            vmArg '-Dfabric-api.gametest'
+            vmArg '-Dfabric-api.gametest.report-file=build/gametest-results.xml'
+        }
+        clientGametest {
+            client()
+            name '猪灵身体客户端测试'
+            source sourceSets.clienttest
+            runDir providers.gradleProperty('piglinClienttestRunDir').getOrElse('build/clienttest')
+            vmArg '-Dfabric.client.gametest'
+            vmArg '-Dfabric.client.gametest.modid=meridian_piglin_clienttest'
+            programArgs '--width', '1280', '--height', '720'
+        }
+    }
+}
+
+tasks.named('runClientGametest') {
+    doFirst {
+        def directory = file(providers.gradleProperty('piglinClienttestRunDir').getOrElse('build/clienttest'))
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nlang:zh_cn\n'
+    }
+}

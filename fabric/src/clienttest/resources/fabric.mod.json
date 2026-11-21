@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "meridian_piglin_clienttest",
+  "version": "1.0.0",
+  "name": "猪灵身体客户端测试",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "dev.kizuna.meridian.piglin.fabric.PiglinBodyClientTest"
+    ]
+  },
+  "depends": {
+    "meridian_piglin": "*"
+  }
+}

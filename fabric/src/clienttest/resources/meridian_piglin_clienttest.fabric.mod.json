@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "meridian_piglin_clienttest",
+  "version": "${version}",
+  "name": "Meridian Piglin ClientTests",
+  "environment": "client",
+  "entrypoints": {"fabric-client-gametest": ["dev.kizuna.meridian.piglin.fabric.PiglinClientTest"]},
+  "depends": {"meridian_piglin": "*", "fabric-gametest-api": "*"}
+}
