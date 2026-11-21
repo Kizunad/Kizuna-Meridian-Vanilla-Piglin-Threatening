@@ -3,6 +3,7 @@ description = '猪灵身体模板、金囊占位器官和身体出生规则。'
 dependencies {
     api 'local.meridian:server'
     implementation 'dev.kizuna.meridian.human:server'
+    implementation 'dev.kizuna.meridian.humanoid:server'
     testImplementation libs.junit4
 }
 

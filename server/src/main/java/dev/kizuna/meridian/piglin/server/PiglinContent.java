@@ -6,7 +6,7 @@ import dev.kizuna.meridian.server.AddonRegistry;
 import dev.kizuna.meridian.protocol.pb.AddonMessages.*;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.*;
 
-/** 猪灵身体内容包，沿用人体构型并追加金囊占位器官。 */
+/** 猪灵身体内容包，沿用人体构型并追加金囊器官。 */
 public final class PiglinContent {
     public static final String NAMESPACE = "meridian_piglin";
     public static final String TEMPLATE_ID = "meridian_piglin:piglin";
@@ -76,14 +76,14 @@ public final class PiglinContent {
         var builder = OrganDefinition.newBuilder();
         builder.setId(GOLD_POUCH);
         builder.setKind(GOLD_POUCH_KIND);
-        builder.setDisplayName("金囊（暂存）");
+        builder.setDisplayName("金囊");
         builder.setPartId("abdomen");
         builder.setMaxHp(GOLD_POUCH_HP);
         builder.setVolumeCapacity(GOLD_POUCH_CAPACITY);
         builder.setThroughputPerSecond(GOLD_POUCH_THROUGHPUT);
         builder.addPorts(port(GOLD_POUCH + ".in", PortDirection.INPUT));
         builder.addPorts(port(GOLD_POUCH + ".out", PortDirection.OUTPUT));
-        builder.addTags("meridian_piglin:gold_pouch_placeholder");
+        builder.addTags("meridian_piglin:gold_pouch");
         return builder.build();
     }
 

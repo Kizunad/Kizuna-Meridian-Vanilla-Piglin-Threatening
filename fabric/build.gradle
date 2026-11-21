@@ -15,6 +15,7 @@ dependencies {
     implementation('dev.kizuna.meridian.humanoid:fabric') { transitive = false }
     implementation('dev.kizuna.meridian.humanoid:server') { transitive = false }
     implementation('dev.kizuna.meridian.vanilla:fabric') { transitive = false }
+    implementation('dev.kizuna.meridian.vanilla:server') { transitive = false }
     compileOnly('dev.kizuna.meridian:fabric') { transitive = false }
     implementation project(':server')
     include project(':server')

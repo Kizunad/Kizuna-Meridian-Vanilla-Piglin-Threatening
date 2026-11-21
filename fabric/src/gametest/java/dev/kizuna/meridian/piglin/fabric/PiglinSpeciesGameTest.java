@@ -32,7 +32,7 @@ public final class PiglinSpeciesGameTest {
             var pouch = body.getStructure().getOrgansList().stream()
                     .filter(organ -> organ.getId().equals(PiglinContent.GOLD_POUCH))
                     .findFirst().orElseThrow();
-            test.assertTrue(pouch.getDisplayName().equals("金囊（暂存）"), "金囊缺少中文名称");
+            test.assertTrue(pouch.getDisplayName().equals("金囊"), "金囊缺少中文名称");
             test.assertTrue(pouch.getPartId().equals("abdomen"), "金囊没有挂在腹部");
             test.assertTrue(body.getMeridianStatesList().stream().allMatch(state ->
                     state.getOpening().getStage() == MeridianOpeningStage.UNOPENED), "出生错误开脉");

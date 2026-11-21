@@ -30,6 +30,8 @@ public final class PiglinBodyClientTest implements FabricClientGameTest {
     private static final double DAMAGE = 2;
     private static final String DAMAGED_PART_ID = "chest";
     private static final double EXPECTED_DAMAGED_PART_HP = 38;
+    private static final double GOLD_DEATH_DAMAGE = 100;
+    private static final long GOLD_DEATH_BALANCE = 9;
     private static final int FLOOR_Y = 64;
     private static final int STAND_Y = FLOOR_Y + 1;
     private static final int PLAYER_Z = 4;
@@ -41,6 +43,7 @@ public final class PiglinBodyClientTest implements FabricClientGameTest {
     private static final float CAMERA_YAW = 180;
     private static final float ENTITY_FACING_PLAYER_YAW = 0;
     private static final float BODY_PITCH = 7;
+    private static final float GOLD_DROP_PITCH = 20;
     private static final float PIGLIN_YAW = (float) Math.toDegrees(
             Math.atan2(-PIGLIN_X, ENTITY_Z - PLAYER_Z));
     private static final int LENS_REFRESH_TICKS = 20;
@@ -75,6 +78,12 @@ public final class PiglinBodyClientTest implements FabricClientGameTest {
             context.waitTicks(LENS_REFRESH_TICKS);
             clearClientPopups(context);
             takeScreenshot(context, "piglin-wounded-body");
+
+            world.getServer().runOnServer(server -> dropPouchGold(server, piglinUuid));
+            context.getInput().lookAt(PIGLIN_YAW, GOLD_DROP_PITCH);
+            context.waitTicks(LENS_REFRESH_TICKS);
+            clearClientPopups(context);
+            takeScreenshot(context, "piglin-gold-death-drops");
         }
     }
 
@@ -127,6 +136,7 @@ public final class PiglinBodyClientTest implements FabricClientGameTest {
         if (!(target instanceof Mob piglin)) {
             throw new AssertionError("猪灵客户端测试目标已丢失");
         }
+        PiglinGoldFabric.setGold(piglin, GOLD_DEATH_BALANCE).orElseThrow();
         var before = VanillaDamageFabric.inspectBody(piglin).orElseThrow();
         if (VanillaDamageFabric.damageDirect(new VanillaDamageFabric.DirectDamage(
                 piglin, piglin.damageSources().generic(), DAMAGED_PART_ID, DAMAGE)).isEmpty()) {
@@ -147,6 +157,19 @@ public final class PiglinBodyClientTest implements FabricClientGameTest {
             throw new AssertionError("客户端测试缺少肢体透视镜");
         }
         player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(lens));
+    }
+
+    private static void dropPouchGold(MinecraftServer server, UUID piglinUuid) {
+        var target = server.overworld().getEntity(piglinUuid);
+        if (!(target instanceof Mob piglin)) {
+            throw new AssertionError("金囊死亡截图目标已丢失");
+        }
+        PiglinGoldFabric.setGold(piglin, GOLD_DEATH_BALANCE).orElseThrow();
+        var death = VanillaDamageFabric.damageDirect(new VanillaDamageFabric.DirectDamage(
+                piglin, piglin.damageSources().generic(), "head", GOLD_DEATH_DAMAGE)).orElseThrow();
+        if (!death.body().getVitality().getDead()) {
+            throw new AssertionError("金囊死亡截图目标未死亡");
+        }
     }
 
     private static void hideHud(ClientGameTestContext context) {

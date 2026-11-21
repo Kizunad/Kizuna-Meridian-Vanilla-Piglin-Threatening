@@ -19,6 +19,8 @@ import net.minecraft.world.entity.LivingEntity;
 
 /** 猪灵和蛮兵的身体宿主接线，保留原版 Brain 与装备行为。 */
 public final class PiglinFabric implements ModInitializer {
+    private static final double TRUE_QI_SPAWN_PROBABILITY = 0.10;
+    private static final double WANDERING_QI_SPAWN_CUMULATIVE_PROBABILITY = 0.40;
     static final Map<EntityType<?>, String> SPECIES = Map.of(
             EntityTypes.PIGLIN, "piglin",
             EntityTypes.PIGLIN_BRUTE, "piglin_brute");
@@ -41,9 +43,10 @@ public final class PiglinFabric implements ModInitializer {
         var bundle = PiglinContent.bundle();
         BodyTemplate selectedTemplate = bundle.getTemplates(0);
         var rules = new SpeciesBodyRules(
-                request -> PiglinBody.born(selectedTemplate, request.bodyId(), request.now()),
+                request -> PiglinBody.born(selectedTemplate, request.bodyId(), request.now(), request.tier(),
+                        request.random()),
                 (wounded, damage) -> PiglinBody.lethal(wounded),
-                (spawn, random) -> HumanoidTier.MORTAL,
+                PiglinFabric::spawnTier,
                 UnaryOperator.identity());
         String table = SPECIES.values().stream()
                 .sorted()
@@ -53,9 +56,28 @@ public final class PiglinFabric implements ModInitializer {
         HumanoidSpeciesHooks.registerAll(table, rules, PiglinFabric::accepts, List.of(bundle));
         HumanDamage.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         VanillaDamageFabric.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
+        PiglinGoldFabric.register();
     }
 
     public static boolean accepts(LivingEntity entity) {
         return !entity.isBaby() && SPECIES.containsKey(entity.getType());
+    }
+
+    static HumanoidTier spawnTier(SpeciesBodyRules.Spawn spawn, java.util.random.RandomGenerator random) {
+        boolean naturalPiglin = spawn.entityType().equals("minecraft:piglin")
+                && spawn.reason().equals(net.minecraft.world.entity.EntitySpawnReason.NATURAL.name());
+        boolean fortressBrute = spawn.entityType().equals("minecraft:piglin_brute")
+                && spawn.reason().equals(net.minecraft.world.entity.EntitySpawnReason.STRUCTURE.name());
+        if (!naturalPiglin && !fortressBrute) {
+            return HumanoidTier.MORTAL;
+        }
+        double roll = random.nextDouble();
+        if (roll < TRUE_QI_SPAWN_PROBABILITY) {
+            return HumanoidTier.TRUE_QI;
+        }
+        if (roll < WANDERING_QI_SPAWN_CUMULATIVE_PROBABILITY) {
+            return HumanoidTier.WANDERING_QI;
+        }
+        return HumanoidTier.MORTAL;
     }
 }

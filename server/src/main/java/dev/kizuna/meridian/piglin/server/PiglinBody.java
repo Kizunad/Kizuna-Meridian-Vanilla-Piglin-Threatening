@@ -1,15 +1,19 @@
 package dev.kizuna.meridian.piglin.server;
 
 import dev.kizuna.meridian.human.server.HumanBirth;
+import dev.kizuna.meridian.humanoid.server.HumanoidTier;
 import dev.kizuna.meridian.protocol.BodyProtobuf;
-import dev.kizuna.meridian.protocol.QiDensity;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.*;
+import java.util.Random;
 import java.util.Set;
+import java.util.random.RandomGenerator;
 
 /** 猪灵身体的出生快照和致死裁决。 */
 public final class PiglinBody {
     private static final int BODY_SCHEMA_VERSION = 3;
+    private static final int MERIDIANS_PER_WANDERING_QI = 8;
     private static final double DEATH_HP_RATIO = 0.2;
+    private static final long DEFAULT_RANDOM_SEED = 0L;
     private static final Set<String> VITAL_PARTS = Set.of("head", "neck", "chest");
     private static final QiInventory EMPTY = QiInventory.getDefaultInstance();
     private static final MeridianOpening CLOSED = closedOpening();
@@ -19,6 +23,11 @@ public final class PiglinBody {
     }
 
     public static BodySnapshot born(BodyTemplate template, String bodyId, TimeCursor now) {
+        return born(template, bodyId, now, HumanoidTier.MORTAL, new Random(DEFAULT_RANDOM_SEED));
+    }
+
+    public static BodySnapshot born(BodyTemplate template, String bodyId, TimeCursor now,
+                                    HumanoidTier tier, RandomGenerator random) {
         var vitalityBuilder = VitalityState.newBuilder();
         vitalityBuilder.setAgeSeconds(HumanBirth.INITIAL_AGE_YEARS * HumanBirth.SECONDS_PER_YEAR);
         vitalityBuilder.setLifespanLimitSeconds(HumanBirth.LIFESPAN_YEARS * HumanBirth.SECONDS_PER_YEAR);
@@ -31,11 +40,12 @@ public final class PiglinBody {
         bodyBuilder.setId(bodyId);
         bodyBuilder.setTemplate(template.getReference());
         bodyBuilder.setStructure(structure);
-        bodyBuilder.setRealm(Realm.WANDERING_QI);
+        bodyBuilder.setRealm(realm(tier));
         bodyBuilder.setSettledAt(now);
         bodyBuilder.setVitality(vitalityBuilder.build());
         addHealthyParts(bodyBuilder, structure);
-        addEmptyMeridians(bodyBuilder, structure);
+        addMeridians(bodyBuilder, structure, tier);
+        bodyBuilder.putAddonProgress(PiglinGold.PROGRESS_KEY, PiglinGold.progress(PiglinGold.initial(tier, random)));
         return validated(bodyBuilder.build());
     }
 
@@ -77,17 +87,38 @@ public final class PiglinBody {
         }
     }
 
-    private static void addEmptyMeridians(BodySnapshot.Builder body, BodyStructure structure) {
-        for (var meridian : structure.getMeridiansList()) {
+    private static void addMeridians(BodySnapshot.Builder body, BodyStructure structure, HumanoidTier tier) {
+        for (int index = 0; index < structure.getMeridiansCount(); index++) {
+            var meridian = structure.getMeridians(index);
             var stateBuilder = MeridianState.newBuilder();
             stateBuilder.setId(meridian.getId());
             stateBuilder.setLumenQi(EMPTY);
             stateBuilder.setWallQi(EMPTY);
             stateBuilder.setFatigue(0);
             stateBuilder.setCondition(MeridianCondition.INTACT);
-            stateBuilder.setOpening(CLOSED);
+            stateBuilder.setOpening(opening(tier, index));
             body.addMeridianStates(stateBuilder.build());
         }
+    }
+
+    private static Realm realm(HumanoidTier tier) {
+        if (tier == HumanoidTier.TRUE_QI) {
+            return Realm.TRUE_QI;
+        }
+        return Realm.WANDERING_QI;
+    }
+
+    private static MeridianOpening opening(HumanoidTier tier, int index) {
+        if (tier == HumanoidTier.MORTAL) {
+            return CLOSED;
+        }
+        if (tier == HumanoidTier.WANDERING_QI && index >= MERIDIANS_PER_WANDERING_QI) {
+            return CLOSED;
+        }
+        var builder = MeridianOpening.newBuilder();
+        builder.setStage(MeridianOpeningStage.OPENED);
+        builder.setProgress(1);
+        return builder.build();
     }
 
     private static MeridianOpening closedOpening() {
