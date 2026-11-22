@@ -4,6 +4,7 @@ dependencies {
     api 'local.meridian:server'
     implementation 'dev.kizuna.meridian.human:server'
     implementation 'dev.kizuna.meridian.humanoid:server'
+    implementation 'dev.kizuna.meridian.technique:server'
     testImplementation libs.junit4
 }
 
