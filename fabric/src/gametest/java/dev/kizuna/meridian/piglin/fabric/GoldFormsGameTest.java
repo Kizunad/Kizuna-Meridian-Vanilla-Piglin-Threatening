@@ -393,7 +393,7 @@ public final class GoldFormsGameTest {
         return target;
     }
 
-    private static Piglin practitioner(GameTestHelper test) {
+    static Piglin practitioner(GameTestHelper test) {
         return practitioner(test, 1);
     }
 

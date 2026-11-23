@@ -30,7 +30,7 @@ final class PiglinTestBodies {
     }
 
     static void announce(String name) {
-        System.out.println("[P3b GameTest] meridian_piglin_test:" + name);
+        System.out.println("[GameTest] meridian_piglin_test:" + name);
     }
 
     static LivingEntity spawn(GameTestHelper test, EntityType<? extends LivingEntity> type) {

@@ -34,7 +34,6 @@ public final class PiglinBehaviorFabric {
     private static final int GOLD_NOTICE_RANGE = 9;
     private static final int GOLD_STRUCK_TICKS = 60;
     private static final int GOLD_SATED_TICKS = 400;
-    private static final long GOLD_STRUCK_MILLIS = 3000;
     private static final long NO_GOLD = 0;
     private static final Map<UUID, GoldState> GOLD_STATES = new HashMap<>();
 
@@ -265,13 +264,12 @@ public final class PiglinBehaviorFabric {
                 return;
             }
             var service = TechniqueFabric.service();
-            var warmup = service.observe(piglin.getUUID()).flatMap(TechniqueService.Observation::cast)
+            UUID uuid = piglin.getUUID();
+            var warmup = service.observe(uuid).flatMap(TechniqueService.Observation::cast)
                     .filter(cast -> cast.phase() == CastPhase.WARMUP);
-            if (warmup.isEmpty()) {
+            if (warmup.isEmpty() || !service.interruptWarmup(uuid, warmup.get().active().getRequest().getCastId())) {
                 return;
             }
-            var notice = new TechniqueService.Stagger(GOLD_STRUCK_MILLIS, 1, TechniqueService.StaggerKind.HIT);
-            service.stagger(piglin.getUUID(), notice);
         }
         state.struckTicks = GOLD_STRUCK_TICKS;
     }
