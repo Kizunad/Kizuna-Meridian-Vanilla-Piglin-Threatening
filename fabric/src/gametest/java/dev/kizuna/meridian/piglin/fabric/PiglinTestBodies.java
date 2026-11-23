@@ -29,6 +29,10 @@ final class PiglinTestBodies {
     private PiglinTestBodies() {
     }
 
+    static void announce(String name) {
+        System.out.println("[P3b GameTest] meridian_piglin_test:" + name);
+    }
+
     static LivingEntity spawn(GameTestHelper test, EntityType<? extends LivingEntity> type) {
         var entity = type.create(test.getLevel(), EntitySpawnReason.COMMAND);
         return add(test, entity);

@@ -1,6 +1,9 @@
 package dev.kizuna.meridian.piglin.fabric;
 
 import dev.kizuna.meridian.piglin.server.PiglinGold;
+import dev.kizuna.meridian.technique.fabric.TechniqueFabric;
+import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastPhase;
+import dev.kizuna.meridian.technique.server.TechniqueService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +21,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.monster.piglin.Piglin;
+import net.minecraft.world.entity.monster.piglin.AbstractPiglin;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.entity.EntityTypeTest;
@@ -30,6 +34,7 @@ public final class PiglinBehaviorFabric {
     private static final int GOLD_NOTICE_RANGE = 9;
     private static final int GOLD_STRUCK_TICKS = 60;
     private static final int GOLD_SATED_TICKS = 400;
+    private static final long GOLD_STRUCK_MILLIS = 3000;
     private static final long NO_GOLD = 0;
     private static final Map<UUID, GoldState> GOLD_STATES = new HashMap<>();
 
@@ -56,7 +61,9 @@ public final class PiglinBehaviorFabric {
         if (isAdmiringItem(piglin)) {
             return;
         }
-        swallowInventoryGold(piglin);
+        if (PiglinGoldFabric.capacity(piglin) == PiglinGold.MORTAL_CAPACITY) {
+            swallowInventoryGold(piglin);
+        }
     }
 
     public static boolean swallowGold(Piglin piglin) {
@@ -82,7 +89,8 @@ public final class PiglinBehaviorFabric {
     }
 
     public static boolean swallowPickedUpGold(Piglin piglin, ItemStack stack) {
-        if (!piglin.isAdult() || hasSoulFireNearby(piglin)) {
+        if (!piglin.isAdult() || PiglinGoldFabric.capacity(piglin) != PiglinGold.MORTAL_CAPACITY
+                || hasSoulFireNearby(piglin)) {
             return false;
         }
         GoldState state = GOLD_STATES.get(piglin.getUUID());
@@ -99,6 +107,55 @@ public final class PiglinBehaviorFabric {
         PiglinGoldFabric.setGold(piglin, currentGold + take.value()).orElseThrow();
         take.consume();
         return true;
+    }
+
+    static boolean canFeed(AbstractPiglin caster) {
+        long free = PiglinGoldFabric.capacity(caster) - PiglinGoldFabric.gold(caster);
+        return nextFood(caster, free) != ItemStack.EMPTY;
+    }
+
+    static boolean eatOne(AbstractPiglin caster) {
+        if (caster instanceof Piglin piglin && (hasSoulFireNearby(piglin) || isGoldStruck(piglin))) {
+            return false;
+        }
+        long current = PiglinGoldFabric.gold(caster);
+        ItemStack food = nextFood(caster, PiglinGoldFabric.capacity(caster) - current);
+        if (food.isEmpty() || PiglinGoldFabric.setGold(caster, current + unitValue(food)).isEmpty()) {
+            return false;
+        }
+        food.shrink(1);
+        return true;
+    }
+
+    private static ItemStack nextFood(AbstractPiglin caster, long room) {
+        if (!(caster instanceof Piglin piglin)) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack offhand = caster.getOffhandItem();
+        if (fits(offhand, room) && !isAdmiringItem(piglin)) {
+            return offhand;
+        }
+        var inventory = piglin.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (fits(stack, room)) {
+                return stack;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static boolean fits(ItemStack stack, long room) {
+        long value = unitValue(stack);
+        return !stack.isEmpty() && value > 0 && value <= room;
+    }
+
+    private static long unitValue(ItemStack stack) {
+        long value = PiglinGold.value(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        if (value == 0 && stack.is(ItemTags.PIGLIN_LOVED)) {
+            return PiglinGold.INGOT_VALUE;
+        }
+        return value;
     }
 
     public static boolean hasSoulFireNearby(LivingEntity entity) {
@@ -183,11 +240,7 @@ public final class PiglinBehaviorFabric {
         if (stack.isEmpty() || free <= NO_GOLD) {
             return;
         }
-        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-        long unitValue = PiglinGold.value(itemId);
-        if (unitValue == NO_GOLD && stack.is(ItemTags.PIGLIN_LOVED)) {
-            unitValue = PiglinGold.INGOT_VALUE;
-        }
+        long unitValue = unitValue(stack);
         if (unitValue == NO_GOLD) {
             return;
         }
@@ -207,6 +260,19 @@ public final class PiglinBehaviorFabric {
         if (state.struckTicks > 0 || state.satedTicks > 0 || !hasLovedItemNearby(piglin)) {
             return;
         }
+        if (PiglinGoldFabric.capacity(piglin) != PiglinGold.MORTAL_CAPACITY) {
+            if (!TechniqueFabric.running()) {
+                return;
+            }
+            var service = TechniqueFabric.service();
+            var warmup = service.observe(piglin.getUUID()).flatMap(TechniqueService.Observation::cast)
+                    .filter(cast -> cast.phase() == CastPhase.WARMUP);
+            if (warmup.isEmpty()) {
+                return;
+            }
+            var notice = new TechniqueService.Stagger(GOLD_STRUCK_MILLIS, 1, TechniqueService.StaggerKind.HIT);
+            service.stagger(piglin.getUUID(), notice);
+        }
         state.struckTicks = GOLD_STRUCK_TICKS;
     }
 
@@ -223,16 +289,11 @@ public final class PiglinBehaviorFabric {
     }
 
     private static boolean isForeignLovedItem(Piglin piglin, ItemEntity item) {
-        if (!isGoldItem(item.getItem())) {
+        if (!item.getItem().is(ItemTags.PIGLIN_LOVED)) {
             return false;
         }
         Entity owner = item.getOwner();
         return owner == null || !owner.getUUID().equals(piglin.getUUID());
-    }
-
-    private static boolean isGoldItem(ItemStack stack) {
-        String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-        return PiglinGold.value(itemId) > NO_GOLD || stack.is(ItemTags.PIGLIN_LOVED);
     }
 
     private static void advanceGoldState(GoldState state) {

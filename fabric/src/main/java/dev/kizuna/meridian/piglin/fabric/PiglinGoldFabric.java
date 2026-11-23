@@ -33,7 +33,7 @@ import net.minecraft.world.item.Items;
 
 /** 金囊进度的活动提交、消耗和金粒掉落接线。 */
 public final class PiglinGoldFabric {
-    private static final String CALLER = "meridian_piglin:gold";
+    static final String CALLER = "meridian_piglin:gold";
     private static final String ABDOMEN_PART_ID = "abdomen";
     private static final int GOLD_NUGGET_STACK_SIZE = 64;
     private static final Set<UUID> SETTLED_DEATHS = new HashSet<>();
@@ -180,6 +180,10 @@ public final class PiglinGoldFabric {
         BodyActivity activity = BodyActivity.newBuilder()
                 .putProgress(PiglinGold.PROGRESS_KEY, PiglinGold.progress(amount))
                 .build();
+        return submit(entity, body, activity);
+    }
+
+    static Optional<BodySnapshot> submit(LivingEntity entity, BodySnapshot body, BodyActivity activity) {
         BodyCommand command = BodyCommand.newBuilder()
                 .setBodyId(body.getId())
                 .setExpectedRevision(body.getRevision())

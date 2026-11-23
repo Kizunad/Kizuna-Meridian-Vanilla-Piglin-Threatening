@@ -16,6 +16,8 @@ dependencies {
     implementation('dev.kizuna.meridian.humanoid:server') { transitive = false }
     implementation('dev.kizuna.meridian.vanilla:fabric') { transitive = false }
     implementation('dev.kizuna.meridian.vanilla:server') { transitive = false }
+    implementation 'dev.kizuna.meridian.technique:fabric'
+    implementation 'dev.kizuna.meridian.technique:server'
     compileOnly('dev.kizuna.meridian:fabric') { transitive = false }
     implementation project(':server')
     include project(':server')
@@ -40,9 +42,7 @@ sourceSets {
 }
 
 dependencies {
-    gametestCompileOnly('dev.kizuna.meridian.technique:fabric') { transitive = false }
     gametestCompileOnly('dev.kizuna.meridian.human:shared') { transitive = false }
-    gametestCompileOnly('dev.kizuna.meridian.technique:server') { transitive = false }
     gametestCompileOnly('dev.kizuna.meridian.vanilla:server') { transitive = false }
     gametestRuntimeOnly project(':server')
 }
@@ -60,6 +60,9 @@ loom {
             source sourceSets.gametest
             runDir providers.gradleProperty('gametestRunDir').getOrElse('build/gametest')
             vmArg '-Dfabric-api.gametest'
+            if (providers.gradleProperty('gametestFilter').isPresent()) {
+                vmArg "-Dfabric-api.gametest.filter=${providers.gradleProperty('gametestFilter').get()}"
+            }
             vmArg '-Dfabric-api.gametest.report-file=build/gametest-results.xml'
         }
         clientGametest {

@@ -8,6 +8,7 @@ import dev.kizuna.meridian.humanoid.server.SpeciesBodyRules;
 import dev.kizuna.meridian.piglin.server.PiglinBody;
 import dev.kizuna.meridian.piglin.server.PiglinContent;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.BodyTemplate;
+import dev.kizuna.meridian.vanilla.fabric.IncomingDamage;
 import dev.kizuna.meridian.vanilla.fabric.VanillaDamageFabric;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,10 @@ public final class PiglinFabric implements ModInitializer {
         HumanDamage.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         VanillaDamageFabric.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         PiglinGoldFabric.register();
+        MidasTouch.register();
+        GoldAttacks.register();
+        GoldForms.register();
+        IncomingDamage.register(GoldDefense::multiplier);
         PiglinBehaviorFabric.register();
     }
 

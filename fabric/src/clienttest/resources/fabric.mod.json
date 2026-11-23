@@ -6,7 +6,8 @@
   "environment": "client",
   "entrypoints": {
     "fabric-client-gametest": [
-      "dev.kizuna.meridian.piglin.fabric.PiglinBodyClientTest"
+      "dev.kizuna.meridian.piglin.fabric.PiglinBodyClientTest",
+      "dev.kizuna.meridian.piglin.fabric.GoldScrollsClientTest"
     ]
   },
   "depends": {

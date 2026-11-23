@@ -21,7 +21,7 @@ public final class PiglinTechniqueCosts implements TechniqueAddonCostEntrypoint 
         payers.register(new GoldPayer());
     }
 
-    private static final class GoldPayer implements TechniqueAddonCostPayer {
+    public static class GoldPayer implements TechniqueAddonCostPayer {
         @Override
         public String key() {
             return PAYER_KEY;

@@ -1,8 +1,10 @@
 package dev.kizuna.meridian.piglin.server;
 
 import dev.kizuna.meridian.human.server.HumanBirth;
+import dev.kizuna.meridian.human.server.HumanOpening;
 import dev.kizuna.meridian.humanoid.server.HumanoidTier;
 import dev.kizuna.meridian.protocol.BodyProtobuf;
+import dev.kizuna.meridian.protocol.QiDensity;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.*;
 import java.util.Random;
 import java.util.Set;
@@ -11,7 +13,6 @@ import java.util.random.RandomGenerator;
 /** 猪灵身体的出生快照和致死裁决。 */
 public final class PiglinBody {
     private static final int BODY_SCHEMA_VERSION = 3;
-    private static final int MERIDIANS_PER_WANDERING_QI = 8;
     private static final double DEATH_HP_RATIO = 0.2;
     private static final long DEFAULT_RANDOM_SEED = 0L;
     private static final Set<String> VITAL_PARTS = Set.of("head", "neck", "chest");
@@ -88,17 +89,34 @@ public final class PiglinBody {
     }
 
     private static void addMeridians(BodySnapshot.Builder body, BodyStructure structure, HumanoidTier tier) {
-        for (int index = 0; index < structure.getMeridiansCount(); index++) {
-            var meridian = structure.getMeridians(index);
+        for (var meridian : structure.getMeridiansList()) {
+            MeridianOpening opening = opening(tier, meridian.getId());
             var stateBuilder = MeridianState.newBuilder();
             stateBuilder.setId(meridian.getId());
-            stateBuilder.setLumenQi(EMPTY);
+            stateBuilder.setLumenQi(birthQi(meridian, opening, tier));
             stateBuilder.setWallQi(EMPTY);
             stateBuilder.setFatigue(0);
             stateBuilder.setCondition(MeridianCondition.INTACT);
-            stateBuilder.setOpening(opening(tier, index));
+            stateBuilder.setOpening(opening);
             body.addMeridianStates(stateBuilder.build());
         }
+    }
+
+    private static QiInventory birthQi(MeridianDefinition channel, MeridianOpening opening, HumanoidTier tier) {
+        // 出生修士的存量只进入已开经脉；用实际内腔体积和相态基准换算元数。
+        if (opening.getStage() != MeridianOpeningStage.OPENED) {
+            return EMPTY;
+        }
+        QiPhase phase = tier == HumanoidTier.TRUE_QI ? QiPhase.LIQUID : QiPhase.GAS;
+        double density = QiDensity.baseline(phase);
+        var qi = Qi.newBuilder()
+                .setAttribute("meridian:none")
+                .setAmount(channel.getLumenVolume() * density)
+                .setDensity(density)
+                .build();
+        return QiInventory.newBuilder()
+                .addEntries(qi)
+                .build();
     }
 
     private static Realm realm(HumanoidTier tier) {
@@ -108,11 +126,11 @@ public final class PiglinBody {
         return Realm.WANDERING_QI;
     }
 
-    private static MeridianOpening opening(HumanoidTier tier, int index) {
+    private static MeridianOpening opening(HumanoidTier tier, String meridianId) {
         if (tier == HumanoidTier.MORTAL) {
             return CLOSED;
         }
-        if (tier == HumanoidTier.WANDERING_QI && index >= MERIDIANS_PER_WANDERING_QI) {
+        if (tier == HumanoidTier.WANDERING_QI && HumanOpening.minimumRealm(meridianId) != Realm.WANDERING_QI) {
             return CLOSED;
         }
         var builder = MeridianOpening.newBuilder();

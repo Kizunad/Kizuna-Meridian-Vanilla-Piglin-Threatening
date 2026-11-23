@@ -29,8 +29,7 @@ abstract class PiglinAiMixin {
     @Inject(method = "pickUpItem", at = @At("TAIL"))
     private static void meridian$afterPickup(ServerLevel level, Piglin piglin, ItemEntity item,
                                               CallbackInfo callback) {
-        PiglinBehaviorFabric.swallowGold(piglin);
-        PiglinBehaviorFabric.tickForTest(piglin);
+        PiglinBehaviorFabric.tick(piglin);
     }
 
     @Inject(method = "stopHoldingOffHandItem", at = @At("HEAD"))
