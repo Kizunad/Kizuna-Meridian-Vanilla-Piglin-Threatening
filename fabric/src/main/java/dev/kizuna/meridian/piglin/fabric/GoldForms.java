@@ -10,6 +10,7 @@ import dev.kizuna.meridian.technique.fabric.TechniqueFabric;
 import dev.kizuna.meridian.technique.fabric.world.TechniqueStatusBenefits;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastRequest;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastOutcome;
+import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.TechniqueReference;
 import dev.kizuna.meridian.technique.server.TechniqueCastEndReason;
 import dev.kizuna.meridian.technique.server.TechniqueCastEnded;
 import dev.kizuna.meridian.technique.server.TechniqueState;
@@ -115,9 +116,10 @@ public final class GoldForms {
         if (has(caster, "gold_cast") || caster instanceof Piglin piglin && PiglinBehaviorFabric.isGoldStruck(piglin)) {
             return Optional.of("此刻无法起式");
         }
-        String id = request.getTechnique().getId();
+        var reference = request.getTechnique();
+        String id = reference.getId();
         if (!id.startsWith(PREFIX)) {
-            return Optional.empty();
+            return PiglinWeaponForms.check(caster, reference);
         }
         String form = id.substring(PREFIX.length());
         if (VanillaDamageFabric.inspectBody(caster).filter(body -> qualifies(body, form)).isEmpty()) {
@@ -182,6 +184,8 @@ public final class GoldForms {
         String form = choose(caster, level, body, ready);
         if (form != null) {
             cast(caster, body, form);
+        } else {
+            PiglinWeaponForms.tryKnown(caster, body, progress);
         }
     }
 
@@ -262,6 +266,10 @@ public final class GoldForms {
         var known = service.known(uuid).stream().filter(entry -> entry.technique().getId().equals(id)).findFirst();
         var reference = known.orElseGet(() -> service.learn(uuid, id).stream()
                 .filter(entry -> entry.technique().getId().equals(id)).findFirst().orElseThrow()).technique();
+        return cast(caster, body, reference);
+    }
+
+    static CastOutcome cast(AbstractPiglin caster, BodySnapshot body, TechniqueReference reference) {
         var request = CastRequest.newBuilder()
                 .setBodyId(body.getId())
                 .setTechnique(reference)
@@ -271,7 +279,7 @@ public final class GoldForms {
             request.setTargetId(target.getStringUUID());
             caster.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, target.getEyePosition());
         }
-        return service.cast(uuid, request.build());
+        return TechniqueFabric.service().cast(caster.getUUID(), request.build());
     }
 
     static AbstractPiglin actor(UUID uuid) {

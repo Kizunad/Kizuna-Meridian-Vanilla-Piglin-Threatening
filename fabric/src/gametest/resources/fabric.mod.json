@@ -6,6 +6,7 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
+      "dev.kizuna.meridian.piglin.fabric.PiglinCommonFormsGameTest",
       "dev.kizuna.meridian.piglin.fabric.GoldFormsGameTest",
       "dev.kizuna.meridian.piglin.fabric.GoldWarmupGameTest",
       "dev.kizuna.meridian.piglin.fabric.GoldDefenseGameTest",

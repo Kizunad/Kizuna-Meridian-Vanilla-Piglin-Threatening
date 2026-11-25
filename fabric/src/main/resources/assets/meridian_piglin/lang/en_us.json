@@ -1,4 +1,6 @@
 {
+  "cast.meridian_piglin.axe": "An axe is needed.",
+  "cast.meridian_piglin.crossbow": "A crossbow and a crossbow form are needed.",
   "organ.meridian_piglin.gold_pouch": "Gold Pouch",
   "organ.meridian_piglin.gold_pouch.description": "A pouch in the belly that stores gold nuggets.",
   "hud.meridian_piglin.gold_pouch": "Gold Pouch %s nuggets",

@@ -1,4 +1,6 @@
 {
+  "cast.meridian_piglin.axe": "手中缺斧。",
+  "cast.meridian_piglin.crossbow": "须持弩施展弩式。",
   "organ.meridian_piglin.gold_pouch": "金囊",
   "organ.meridian_piglin.gold_pouch.description": "腹中用于储纳金粒的囊室。",
   "hud.meridian_piglin.gold_pouch": "金囊 %s 粒",
