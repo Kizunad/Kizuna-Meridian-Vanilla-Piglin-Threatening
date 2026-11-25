@@ -3,7 +3,13 @@
   "id": "meridian_piglin",
   "version": "${version}",
   "name": "Kizuna's Meridian Vanilla Piglin Threatening",
-  "description": "猪灵身体模板与原版猪灵物种接线。",
+  "contact": {
+    "homepage": "https://github.com/Kizunad/Kizuna-Meridian-Vanilla-Piglin-Threatening",
+    "sources": "https://github.com/Kizunad/Kizuna-Meridian-Vanilla-Piglin-Threatening",
+    "issues": "https://github.com/Kizunad/Kizuna-Meridian-Vanilla-Piglin-Threatening/issues"
+  },
+  "icon": "assets/meridian_piglin/icon.png",
+  "description": "Gives vanilla piglins bodies with their own organs and meridians.\n为原版猪灵提供本族的器官和经脉构造。",
   "authors": ["Kizunad"],
   "license": "PolyForm-Noncommercial-1.0.0",
   "environment": "*",
