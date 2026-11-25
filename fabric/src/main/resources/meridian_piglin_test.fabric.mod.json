@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "id": "meridian_piglin_test",
-  "version": "${version}",
-  "name": "Meridian Piglin GameTests",
-  "environment": "*",
-  "entrypoints": {"fabric-gametest": ["dev.kizuna.meridian.piglin.fabric.PiglinP0GameTest"]},
-  "depends": {"meridian_piglin": "*", "fabric-gametest-api": "*"}
-}
