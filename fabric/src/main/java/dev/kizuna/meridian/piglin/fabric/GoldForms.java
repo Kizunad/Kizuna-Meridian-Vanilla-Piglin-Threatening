@@ -1,5 +1,6 @@
 package dev.kizuna.meridian.piglin.fabric;
 
+import dev.kizuna.meridian.humanoid.fabric.HumanoidSwordForms;
 import dev.kizuna.meridian.humanoid.server.HumanoidTier;
 import dev.kizuna.meridian.protocol.BodyProtobuf;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.BodySnapshot;
@@ -181,6 +182,9 @@ public final class GoldForms {
         long now = body.getSettledAt().getElapsedMillis();
         Predicate<String> ready = form -> progress.getCooldownsOrDefault(PREFIX + form, 0) <= now
                 && qualifies(body, form);
+        if (HumanoidSwordForms.tryCast(caster)) {
+            return;
+        }
         String form = choose(caster, level, body, ready);
         if (form != null) {
             cast(caster, body, form);

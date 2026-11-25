@@ -19,6 +19,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 public final class PiglinBehaviorGameTest {
+    private static final int INVENTORY_SIZE = 8;
     private static final int STACK_A_COUNT = 5;
     private static final int STACK_B_COUNT = 5;
     private static final int GOLD_NOTICE_TICKS = 60;
@@ -61,6 +62,9 @@ public final class PiglinBehaviorGameTest {
     public void barterKeepsVanillaLootAndAddsGold(GameTestHelper test) {
         announce("piglin_behavior_game_test_barter_keeps_vanilla_loot_and_adds_gold");
         Piglin piglin = piglin(test);
+        var inventory = piglin.getInventory();
+        test.assertTrue(inventory.getContainerSize() == INVENTORY_SIZE, "原版猪灵应保留八格库存");
+        inventory.setItem(INVENTORY_SIZE - 1, new ItemStack(Items.STICK));
         piglin.setItemInHand(InteractionHand.OFF_HAND, new ItemStack(Items.GOLD_INGOT));
         invokeBarterStop(test.getLevel(), piglin);
 
@@ -72,6 +76,7 @@ public final class PiglinBehaviorGameTest {
         test.assertTrue(PiglinGoldFabric.gold(piglin) == PiglinGold.INGOT_VALUE,
                 "易货金锭未进入金囊");
         test.assertTrue(responseCount > 0, "原版易货掉落没有保留");
+        test.assertTrue(inventory.getItem(INVENTORY_SIZE - 1).is(Items.STICK), "易货改写了最后一格库存");
         test.succeed();
     }
 

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
@@ -58,6 +59,9 @@ public final class PiglinFabric implements ModInitializer {
         HumanDamage.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         VanillaDamageFabric.registerTemplateDefaults(PiglinContent.TEMPLATE_ID, HumanContent.TEMPLATE_ID);
         PiglinGoldFabric.register();
+        if (FabricLoader.getInstance().isModLoaded("meridian_piglin_sword")) {
+            PiglinSwordLoot.register();
+        }
         MidasTouch.register();
         GoldAttacks.register();
         GoldForms.register();
