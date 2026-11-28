@@ -1,6 +1,8 @@
 package dev.kizuna.meridian.piglin.fabric;
 
 import dev.kizuna.meridian.piglin.server.PiglinGold;
+import dev.kizuna.meridian.humanoid.server.HumanoidTier;
+import dev.kizuna.meridian.protocol.pb.BodyMessages.BodySnapshot;
 import dev.kizuna.meridian.technique.fabric.TechniqueFabric;
 import dev.kizuna.meridian.technique.protocol.pb.TechniqueMessages.CastPhase;
 import dev.kizuna.meridian.technique.server.TechniqueService;
@@ -10,10 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -29,11 +29,11 @@ import net.minecraft.world.phys.AABB;
 
 /** 猪灵原版 Brain 外的服金、魂火和见金状态接线。 */
 public final class PiglinBehaviorFabric {
-    private static final int REPELLENT_HORIZONTAL_RANGE = 8;
-    private static final int REPELLENT_VERTICAL_RANGE = 4;
     private static final int GOLD_NOTICE_RANGE = 9;
     private static final int GOLD_STRUCK_TICKS = 60;
     private static final int GOLD_SATED_TICKS = 400;
+    private static final int DECISION_INTERVAL_MIN = 10;
+    private static final int DECISION_INTERVAL_RANGE = 11;
     private static final long NO_GOLD = 0;
     private static final Map<UUID, GoldState> GOLD_STATES = new HashMap<>();
 
@@ -45,12 +45,32 @@ public final class PiglinBehaviorFabric {
     }
 
     public static void tick(Piglin piglin) {
+        tick(piglin, true);
+    }
+
+    public static void tickScheduled(Piglin piglin) {
+        tick(piglin, false);
+    }
+
+    private static void tick(Piglin piglin, boolean forceDecision) {
         if (!piglin.isAdult()) {
             return;
         }
         GoldState state = GOLD_STATES.computeIfAbsent(piglin.getUUID(), ignored -> new GoldState());
         advanceGoldState(state);
-        noticeGold(piglin, state);
+        long gameTime = piglin.level().getGameTime();
+        if (state.nextDecisionTick == 0) {
+            state.nextDecisionTick = gameTime + decisionJitter(piglin);
+        }
+        if (!forceDecision && gameTime < state.nextDecisionTick) {
+            return;
+        }
+        state.nextDecisionTick = gameTime + DECISION_INTERVAL_MIN + decisionJitter(piglin);
+        var snapshot = PiglinGoldFabric.snapshot(piglin);
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        noticeGold(piglin, state, snapshot.get());
         if (isGoldStruck(piglin)) {
             return;
         }
@@ -60,9 +80,13 @@ public final class PiglinBehaviorFabric {
         if (isAdmiringItem(piglin)) {
             return;
         }
-        if (PiglinGoldFabric.capacity(piglin) == PiglinGold.MORTAL_CAPACITY) {
-            swallowInventoryGold(piglin);
+        if (snapshot.get().capacity() == PiglinGold.MORTAL_CAPACITY) {
+            swallowInventoryGold(piglin, snapshot.get());
         }
+    }
+
+    private static int decisionJitter(Piglin piglin) {
+        return (int) Math.floorMod(piglin.getUUID().getLeastSignificantBits(), DECISION_INTERVAL_RANGE);
     }
 
     public static boolean swallowGold(Piglin piglin) {
@@ -73,8 +97,12 @@ public final class PiglinBehaviorFabric {
         if (state != null && (state.struckTicks > 0 || state.satedTicks > 0)) {
             return false;
         }
-        long currentGold = PiglinGoldFabric.gold(piglin);
-        long free = PiglinGoldFabric.capacity(piglin) - currentGold;
+        var snapshot = PiglinGoldFabric.snapshot(piglin);
+        if (snapshot.isEmpty()) {
+            return false;
+        }
+        long currentGold = snapshot.get().gold();
+        long free = snapshot.get().capacity() - currentGold;
         if (free <= NO_GOLD) {
             return false;
         }
@@ -82,7 +110,7 @@ public final class PiglinBehaviorFabric {
         if (take.value() <= NO_GOLD) {
             return false;
         }
-        PiglinGoldFabric.setGold(piglin, currentGold + take.value()).orElseThrow();
+        PiglinGoldFabric.setGold(piglin, snapshot.get().body(), currentGold + take.value()).orElseThrow();
         take.consume();
         return true;
     }
@@ -96,20 +124,29 @@ public final class PiglinBehaviorFabric {
         if (state != null && (state.struckTicks > 0 || state.satedTicks > 0)) {
             return false;
         }
-        long currentGold = PiglinGoldFabric.gold(piglin);
-        long free = PiglinGoldFabric.capacity(piglin) - currentGold;
+        var snapshot = PiglinGoldFabric.snapshot(piglin);
+        if (snapshot.isEmpty()) {
+            return false;
+        }
+        long currentGold = snapshot.get().gold();
+        long free = snapshot.get().capacity() - currentGold;
         GoldTake take = new GoldTake();
         collectStack(take, stack, free);
         if (take.value() <= NO_GOLD) {
             return false;
         }
-        PiglinGoldFabric.setGold(piglin, currentGold + take.value()).orElseThrow();
+        PiglinGoldFabric.setGold(piglin, snapshot.get().body(), currentGold + take.value()).orElseThrow();
         take.consume();
         return true;
     }
 
     static boolean canFeed(AbstractPiglin caster) {
-        long free = PiglinGoldFabric.capacity(caster) - PiglinGoldFabric.gold(caster);
+        var snapshot = PiglinGoldFabric.snapshot(caster);
+        return snapshot.isPresent() && canFeed(caster, snapshot.get().body());
+    }
+
+    static boolean canFeed(AbstractPiglin caster, BodySnapshot body) {
+        long free = PiglinGold.capacity(HumanoidTier.of(body)) - PiglinGold.read(body);
         return nextFood(caster, free) != ItemStack.EMPTY;
     }
 
@@ -117,9 +154,14 @@ public final class PiglinBehaviorFabric {
         if (caster instanceof Piglin piglin && (hasSoulFireNearby(piglin) || isGoldStruck(piglin))) {
             return false;
         }
-        long current = PiglinGoldFabric.gold(caster);
-        ItemStack food = nextFood(caster, PiglinGoldFabric.capacity(caster) - current);
-        if (food.isEmpty() || PiglinGoldFabric.setGold(caster, current + unitValue(food)).isEmpty()) {
+        var snapshot = PiglinGoldFabric.snapshot(caster);
+        if (snapshot.isEmpty()) {
+            return false;
+        }
+        long current = snapshot.get().gold();
+        ItemStack food = nextFood(caster, snapshot.get().capacity() - current);
+        if (food.isEmpty() || PiglinGoldFabric.setGold(caster, snapshot.get().body(),
+                current + unitValue(food)).isEmpty()) {
             return false;
         }
         food.shrink(1);
@@ -158,22 +200,8 @@ public final class PiglinBehaviorFabric {
     }
 
     public static boolean hasSoulFireNearby(LivingEntity entity) {
-        if (!(entity.level() instanceof ServerLevel level)) {
-            return false;
-        }
-        BlockPos origin = entity.blockPosition();
-        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-        for (int x = -REPELLENT_HORIZONTAL_RANGE; x <= REPELLENT_HORIZONTAL_RANGE; x++) {
-            for (int y = -REPELLENT_VERTICAL_RANGE; y <= REPELLENT_VERTICAL_RANGE; y++) {
-                for (int z = -REPELLENT_HORIZONTAL_RANGE; z <= REPELLENT_HORIZONTAL_RANGE; z++) {
-                    cursor.set(origin.getX() + x, origin.getY() + y, origin.getZ() + z);
-                    if (level.getBlockState(cursor).is(BlockTags.PIGLIN_REPELLENTS)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        return entity instanceof Piglin piglin
+                && piglin.getBrain().hasMemoryValue(MemoryModuleType.NEAREST_REPELLENT);
     }
 
     public static boolean isWearingSafeArmor(LivingEntity entity) {
@@ -199,13 +227,8 @@ public final class PiglinBehaviorFabric {
         tick(piglin);
     }
 
-    private static void swallowInventoryGold(Piglin piglin) {
-        if (hasSoulFireNearby(piglin)) {
-            return;
-        }
-        long gold = PiglinGoldFabric.gold(piglin);
-        long capacity = PiglinGoldFabric.capacity(piglin);
-        long free = capacity - gold;
+    private static void swallowInventoryGold(Piglin piglin, PiglinGoldFabric.GoldSnapshot snapshot) {
+        long free = snapshot.capacity() - snapshot.gold();
         if (free <= NO_GOLD) {
             return;
         }
@@ -213,7 +236,11 @@ public final class PiglinBehaviorFabric {
         if (take.value() <= NO_GOLD) {
             return;
         }
-        PiglinGoldFabric.setGold(piglin, gold + take.value()).ifPresent(ignored -> take.consume());
+        if (hasSoulFireNearby(piglin)) {
+            return;
+        }
+        PiglinGoldFabric.setGold(piglin, snapshot.body(), snapshot.gold() + take.value())
+                .ifPresent(ignored -> take.consume());
     }
 
     private static GoldTake findGoldIncludingOffhand(Piglin piglin, long free) {
@@ -255,11 +282,11 @@ public final class PiglinBehaviorFabric {
         return piglin.getBrain().hasMemoryValue(MemoryModuleType.ADMIRING_ITEM);
     }
 
-    private static void noticeGold(Piglin piglin, GoldState state) {
+    private static void noticeGold(Piglin piglin, GoldState state, PiglinGoldFabric.GoldSnapshot snapshot) {
         if (state.struckTicks > 0 || state.satedTicks > 0 || !hasLovedItemNearby(piglin)) {
             return;
         }
-        if (PiglinGoldFabric.capacity(piglin) != PiglinGold.MORTAL_CAPACITY) {
+        if (snapshot.capacity() != PiglinGold.MORTAL_CAPACITY) {
             if (!TechniqueFabric.running()) {
                 return;
             }
@@ -310,6 +337,7 @@ public final class PiglinBehaviorFabric {
     private static final class GoldState {
         private int struckTicks;
         private int satedTicks;
+        private long nextDecisionTick;
     }
 
     private static final class GoldTake {

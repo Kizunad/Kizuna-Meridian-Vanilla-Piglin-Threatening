@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -87,6 +88,7 @@ public final class PiglinBehaviorGameTest {
         BlockPos firePos = piglin.blockPosition().east();
         test.getLevel().setBlock(firePos.below(), Blocks.SOUL_SOIL.defaultBlockState(), BLOCK_UPDATE_FLAGS);
         test.getLevel().setBlock(firePos, Blocks.SOUL_FIRE.defaultBlockState(), BLOCK_UPDATE_FLAGS);
+        piglin.getBrain().setMemory(MemoryModuleType.NEAREST_REPELLENT, firePos);
         piglin.getInventory().setItem(0, new ItemStack(Items.GOLD_NUGGET));
 
         test.assertTrue(!PiglinBehaviorFabric.swallowGold(piglin), "魂火旁错误服金");

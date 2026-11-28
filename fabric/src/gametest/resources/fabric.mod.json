@@ -14,7 +14,8 @@
       "dev.kizuna.meridian.piglin.fabric.PiglinSpeciesGameTest",
       "dev.kizuna.meridian.piglin.fabric.PiglinDamageGameTest",
       "dev.kizuna.meridian.piglin.fabric.PiglinGoldGameTest",
-      "dev.kizuna.meridian.piglin.fabric.PiglinBehaviorGameTest"
+      "dev.kizuna.meridian.piglin.fabric.PiglinBehaviorGameTest",
+      "dev.kizuna.meridian.piglin.fabric.PiglinCrowdPerfGameTest"
     ]
   },
   "depends": {

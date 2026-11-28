@@ -22,6 +22,6 @@ abstract class PiglinMixin {
 
     @Inject(method = "customServerAiStep", at = @At("TAIL"))
     private void meridian$tick(ServerLevel level, CallbackInfo callback) {
-        PiglinBehaviorFabric.tick((Piglin) (Object) this);
+        PiglinBehaviorFabric.tickScheduled((Piglin) (Object) this);
     }
 }

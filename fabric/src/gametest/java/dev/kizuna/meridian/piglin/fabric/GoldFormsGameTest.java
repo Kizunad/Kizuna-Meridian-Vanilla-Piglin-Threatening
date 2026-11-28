@@ -81,6 +81,7 @@ public final class GoldFormsGameTest {
         Piglin afraid = practitioner(test);
         var torch = afraid.blockPosition().above();
         level.setBlockAndUpdate(torch, Blocks.SOUL_TORCH.defaultBlockState());
+        afraid.getBrain().setMemory(MemoryModuleType.NEAREST_REPELLENT, torch);
         double increased = spendOnDart(test, afraid);
         test.assertTrue(Math.abs(increased - normalCost * SOUL_FIRE_FACTOR) < DAMAGE_TOLERANCE,
                 "魂火旁应扣双倍真元，原价 " + normalCost + " 实付 " + increased);
@@ -258,11 +259,13 @@ public final class GoldFormsGameTest {
         var torch = caster.blockPosition().above();
         var level = test.getLevel();
         level.setBlockAndUpdate(torch, Blocks.SOUL_TORCH.defaultBlockState());
+        caster.getBrain().setMemory(MemoryModuleType.NEAREST_REPELLENT, torch);
         var before = PiglinTestBodies.body(caster).getMeridianStatesList();
         var failed = cast(caster, "swallow_gold");
         test.assertTrue(failed != TechniqueFailure.TECHNIQUE_FAILURE_UNSPECIFIED, "魂火旁服金应拒绝起式");
         test.assertTrue(PiglinTestBodies.body(caster).getMeridianStatesList().equals(before), "拒绝后经脉真元有变");
         level.setBlockAndUpdate(torch, Blocks.AIR.defaultBlockState());
+        caster.getBrain().eraseMemory(MemoryModuleType.NEAREST_REPELLENT);
         accepted(test, caster, "swallow_gold");
         test.succeed();
     }

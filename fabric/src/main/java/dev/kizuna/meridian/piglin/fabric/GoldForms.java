@@ -2,6 +2,7 @@ package dev.kizuna.meridian.piglin.fabric;
 
 import dev.kizuna.meridian.humanoid.fabric.HumanoidSwordForms;
 import dev.kizuna.meridian.humanoid.server.HumanoidTier;
+import dev.kizuna.meridian.piglin.server.PiglinGold;
 import dev.kizuna.meridian.protocol.BodyProtobuf;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.BodySnapshot;
 import dev.kizuna.meridian.protocol.pb.BodyMessages.MeridianOpeningStage;
@@ -123,10 +124,11 @@ public final class GoldForms {
             return PiglinWeaponForms.check(caster, reference);
         }
         String form = id.substring(PREFIX.length());
-        if (VanillaDamageFabric.inspectBody(caster).filter(body -> qualifies(body, form)).isEmpty()) {
+        var body = VanillaDamageFabric.inspectBody(caster).orElse(null);
+        if (body == null || !qualifies(body, form)) {
             return Optional.of("施展此式所需的经脉尚未冲开");
         }
-        if (id.equals(PREFIX + "swallow_gold") && !PiglinBehaviorFabric.canFeed(caster)) {
+        if (id.equals(PREFIX + "swallow_gold") && !PiglinBehaviorFabric.canFeed(caster, body)) {
             return Optional.of("腹中已满，或身边无金可食");
         }
         if (caster instanceof Piglin && (id.equals(PREFIX + "swallow_gold") || id.equals(PREFIX + "gilding"))
@@ -194,7 +196,7 @@ public final class GoldForms {
     }
 
     private static String choose(AbstractPiglin caster, ServerLevel level, BodySnapshot body, Predicate<String> ready) {
-        long gold = PiglinGoldFabric.gold(caster);
+        long gold = PiglinGold.read(body);
         // 伤害仓先结算重伤，再登记僵直；把这次重击留到恢复后的第一次择式。
         boolean heavy = HEAVY_HITS.remove(caster);
         boolean wounded = health(body) < maximumHealth(body) * LOW_HEALTH;
@@ -204,12 +206,12 @@ public final class GoldForms {
         LivingEntity target = caster.getTarget();
         if (target == null) {
             if (ready.test("swallow_gold") && level.getNearestPlayer(caster, QUIET_RANGE) == null
-                    && PiglinBehaviorFabric.canFeed(caster)) {
+                    && PiglinBehaviorFabric.canFeed(caster, body)) {
                 return "swallow_gold";
             }
             return null;
         }
-        long capacity = PiglinGoldFabric.capacity(caster);
+        long capacity = PiglinGold.capacity(HumanoidTier.of(body));
         double distance = caster.distanceTo(target);
         if (distance <= GoldAttacks.REACH) {
             boolean wantsTreasure = GoldAttacks.holdsGoldTool(target) || gold < capacity * LOW_POUCH;

@@ -51,6 +51,14 @@ public final class PiglinGoldFabric {
         return VanillaDamageFabric.inspectBody(entity).map(PiglinGold::read).orElse(0L);
     }
 
+    static Optional<GoldSnapshot> snapshot(LivingEntity entity) {
+        return VanillaDamageFabric.inspectBody(entity).map(PiglinGoldFabric::snapshot);
+    }
+
+    static GoldSnapshot snapshot(BodySnapshot body) {
+        return new GoldSnapshot(body, PiglinGold.read(body), PiglinGold.capacity(HumanoidTier.of(body)));
+    }
+
     static long capacity(LivingEntity entity) {
         return VanillaDamageFabric.inspectBody(entity)
                 .map(body -> PiglinGold.capacity(HumanoidTier.of(body)))
@@ -58,11 +66,15 @@ public final class PiglinGoldFabric {
     }
 
     public static boolean addGold(LivingEntity entity, long currentGold) {
-        long updatedGold = currentGold + PiglinGold.INGOT_VALUE;
-        if (updatedGold > capacity(entity)) {
+        Optional<GoldSnapshot> current = snapshot(entity);
+        if (current.isEmpty()) {
             return false;
         }
-        return setGold(entity, updatedGold).isPresent();
+        long updatedGold = currentGold + PiglinGold.INGOT_VALUE;
+        if (updatedGold > current.get().capacity()) {
+            return false;
+        }
+        return setGold(entity, current.get().body(), updatedGold).isPresent();
     }
 
     static Optional<BodySnapshot> spend(LivingEntity entity, long amount) {
@@ -86,11 +98,15 @@ public final class PiglinGoldFabric {
         if (current.isEmpty()) {
             return Optional.empty();
         }
-        long capacity = PiglinGold.capacity(HumanoidTier.of(current.get()));
+        return setGold(entity, current.get(), amount);
+    }
+
+    static Optional<BodySnapshot> setGold(LivingEntity entity, BodySnapshot current, long amount) {
+        long capacity = PiglinGold.capacity(HumanoidTier.of(current));
         if (amount < 0 || amount > capacity) {
             throw new IllegalArgumentException("金囊金量超出容量");
         }
-        return submitGold(entity, current.get(), amount);
+        return submitGold(entity, current, amount);
     }
 
     private static void observeDamage(VanillaDamageFabric.DamageEvent event) {
@@ -217,6 +233,9 @@ public final class PiglinGoldFabric {
             }
         }
         return Optional.empty();
+    }
+
+    record GoldSnapshot(BodySnapshot body, long gold, long capacity) {
     }
 
     private static List<ItemEntity> dropNuggets(LivingEntity entity, long amount) {
